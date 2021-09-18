@@ -54,7 +54,7 @@ class MainWindow(QMainWindow):
     def load_mandelbrot(self):
         if not self.mandel_valid:
             # generate mandel_scene
-            self.mandel_path = rust_interface.load_mandelbrot(self.scale, self.tries)
+            self.mandel_path = self.plot_window.load_mandelbrot(self.scale, self.tries)
             pixmap = QPixmap(self.mandel_path)
 
             self.mandel_item = QtWidgets.QGraphicsPixmapItem(pixmap)
@@ -71,7 +71,7 @@ class MainWindow(QMainWindow):
     def load_julia(self):
         if not self.julia_valid:
             # generate julia_scene
-            self.julia_path = rust_interface.load_julia(self.julia_cords, self.scale, self.tries)
+            self.julia_path = self.plot_window.load_julia(self.julia_cords, self.scale, self.tries)
             pixmap = QPixmap(self.julia_path)
 
             self.julia_item = QtWidgets.QGraphicsPixmapItem(pixmap)
@@ -99,6 +99,10 @@ class MainWindow(QMainWindow):
         elif self.mode == Modes.Julia:
             self.mode = Modes.Mandelbrot
             self.load_mandelbrot()
+
+    def invalidate(self):
+        self.mandel_valid = False
+        self.julia_valid = False
         
 
 class ResponsiveScene(QtWidgets.QGraphicsScene):
@@ -106,9 +110,25 @@ class ResponsiveScene(QtWidgets.QGraphicsScene):
         self.window = window
         super().__init__()
 
+    def wheelEvent(self, event: 'QGraphicsSceneWheelEvent') -> None:
+        super().wheelEvent(event)
+        rotation = event.delta()
+        point = event.scenePos()
+        p = self.window.plot_window.pix_to_cords(point.x(), point.y())
+        print("p", p)
+        if rotation > 0:
+            print("wheel forward")
+            self.window.plot_window = self.window.plot_window.zoom(p, 0.8)
+        elif rotation < 0:
+            print("wheel backward")
+            self.window.plot_window = self.window.plot_window.zoom(p, 1.25)
+        print(self.window.plot_window)
+        self.window.invalidate()
+        self.window.load_image()
+
     def mouseDoubleClickEvent(self, event: 'QGraphicsSceneMouseEvent') -> None:
+        super().mouseDoubleClickEvent(event)
         self.mousePressEvent(event)
-        return super().mouseDoubleClickEvent(event)
 
     def mousePressEvent(self, event: 'QGraphicsSceneMouseEvent'): 
         super().mousePressEvent(event)
@@ -120,8 +140,6 @@ class ResponsiveScene(QtWidgets.QGraphicsScene):
             self.left_click_event()
 
     def right_click_event(self, point):
-        self.window.change_mode()
-        print("Mode", self.window.mode)
         x = point.x()
         y = point.y()
         print("Scene", x, y)
@@ -130,7 +148,8 @@ class ResponsiveScene(QtWidgets.QGraphicsScene):
         if self.window.julia_cords != cords:
             self.window.julia_valid = False
             self.window.julia_cords = cords
-        self.window.load_image()
+        self.window.change_mode()
+        print("Mode", self.window.mode)
 
     def left_click_event(self):
         # maybe implement a drag function

@@ -155,7 +155,7 @@ fn draw_cardioid(c: f64, slices: u32) {
     img.save(out_file).expect("oops");
 }
 
-fn main_julia(julia: Julia, x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_range: u32, y_range: u32, out_file: &str, tries: u32) {
+pub fn main_julia(julia: Julia, x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_range: u32, y_range: u32, out_file: &str, tries: u32) {
     let img = render_julia(julia, x_min, x_max, y_min, y_max, x_range, y_range, tries);
     img.save(out_file).expect("could not save image");
 }
@@ -201,6 +201,10 @@ fn render_julia(julia: Julia, x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_r
 pub fn main_mandelbrot(scale: u32, out_file: &str, tries: u32) {
     let img = render_mandelbrot(-X_DIF, X_DIF, -Y_DIF, Y_DIF, 16 * scale , 9 * scale, tries);
     img.save(out_file).expect("could not save image");
+}
+
+pub fn fine_mandelbrot(x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_range: u32, y_range: u32, out_file: &str, tries: u32) {
+    render_mandelbrot(x_min, x_max, y_min, y_max, x_range, y_range, tries).save(out_file).expect("could not save image")
 }
 
 fn render_mandelbrot(x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_range: u32, y_range: u32, tries: u32) -> ImageBuffer<image::Rgb<u8>, std::vec::Vec<u8>> {

@@ -9,6 +9,8 @@ py_module_initializer!(mandelbrot, |py, m| {
     m.add(py, "julia", py_fn!(py, julia_py(jx: f64, jy: f64, scale: u32, out_file: &str, tries: u32)))?;
     m.add(py, "raw_julia", py_fn!(py, raw_julia_py(jx: f64, jy: f64, scale: u32, tries: u32)))?;
     m.add(py, "mandelbrot", py_fn!(py, mandelbrot_py(scale: u32, out_file: &str, tries: u32)))?;
+    m.add(py, "fine_julia", py_fn!(py, fine_julia_py(jx: f64, jy: f64, x_min: f64, x_max: f64, y_min: f64, y_max: f64, scale: u32, out_file: &str, tries: u32)))?;
+    m.add(py, "fine_mandelbrot", py_fn!(py, fine_mandelbrot_py(x_min: f64, x_max: f64, y_min: f64, y_max: f64, scale: u32, out_file: &str, tries: u32)))?;
     Ok(())
 });
 
@@ -23,6 +25,17 @@ fn raw_julia_py(_: Python, jx: f64, jy: f64, scale: u32, tries: u32) -> PyResult
 
 fn mandelbrot_py(_: Python, scale: u32, out_file: &str, tries: u32) -> PyResult<String> {
     julia::main_mandelbrot(scale, out_file, tries);
+    Ok(String::from(out_file))
+}
+
+fn fine_julia_py(_: Python, jx: f64, jy: f64, x_min: f64, x_max: f64, y_min: f64, y_max: f64, scale: u32, out_file: &str, tries: u32) -> PyResult<String> {
+    let jul = julia::Julia::new(jx, jy);
+    julia::main_julia(jul, x_min, x_max, y_min, y_max, 16 * scale , 9 * scale, out_file, tries);
+    Ok(String::from(out_file))
+}
+
+fn fine_mandelbrot_py(_: Python, x_min: f64, x_max: f64, y_min: f64, y_max: f64, scale: u32, out_file: &str, tries: u32) -> PyResult<String> {
+    julia::fine_mandelbrot(x_min, x_max, y_min, y_max, 16 * scale , 9 * scale, out_file, tries);
     Ok(String::from(out_file))
 }
 
