@@ -1,0 +1,16 @@
+[package]
+name = "mandelbrot"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+name = "mandelbrot"
+crate-type = ["cdylib"]
+
+[dependencies]
+image = "0.23.14"
+pbr = "1.0.4"
+
+[dependencies.cpython]
+version = "0.6"
+features = ["extension-module"]
