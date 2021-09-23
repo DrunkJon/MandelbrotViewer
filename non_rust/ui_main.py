@@ -7,7 +7,7 @@ from PyQt5.QtGui import QPixmap
 import sys
 from enum import Enum, auto
 
-import rust_interface
+from mandelbrot import PlotWindow
 
 
 class Modes(Enum):
@@ -24,7 +24,6 @@ class MainWindow(QMainWindow):
         # params
         self.scale = 120    # 120 = (1920, 1080), 80 = (1280, 720) ...
         self.tries = 100
-        self.julia_cords = (0.25, 0.0)
 
         # render Items
         self.mandel_scene = None
@@ -32,8 +31,8 @@ class MainWindow(QMainWindow):
         self.julia_scene = None
         self.julia_valid = False
 
-        # only used for cord translation
-        self.plot_window = rust_interface.PlotWindow((16 * self.scale, 9 * self.scale))
+        # maps pixels to 2D coordinates
+        self.plot_window = PlotWindow((16 * self.scale, 9 * self.scale))
         
         # render first image
         self.mode = Modes.Mandelbrot
@@ -54,7 +53,7 @@ class MainWindow(QMainWindow):
     def load_mandelbrot(self):
         if not self.mandel_valid:
             # generate mandel_scene
-            self.mandel_path = self.plot_window.load_mandelbrot(self.scale, self.tries)
+            self.mandel_path = self.plot_window.load_mandelbrot(self.tries)
             pixmap = QPixmap(self.mandel_path)
 
             self.mandel_item = QtWidgets.QGraphicsPixmapItem(pixmap)
@@ -71,7 +70,7 @@ class MainWindow(QMainWindow):
     def load_julia(self):
         if not self.julia_valid:
             # generate julia_scene
-            self.julia_path = self.plot_window.load_julia(self.julia_cords, self.scale, self.tries)
+            self.julia_path = self.plot_window.load_julia(self.tries)
             pixmap = QPixmap(self.julia_path)
 
             self.julia_item = QtWidgets.QGraphicsPixmapItem(pixmap)
@@ -114,7 +113,7 @@ class ResponsiveScene(QtWidgets.QGraphicsScene):
         super().wheelEvent(event)
         rotation = event.delta()
         point = event.scenePos()
-        p = self.window.plot_window.pix_to_cords(point.x(), point.y())
+        p = (point.x(), point.y())
         print("p", p)
         if rotation > 0:
             print("wheel forward")
@@ -143,11 +142,9 @@ class ResponsiveScene(QtWidgets.QGraphicsScene):
         x = point.x()
         y = point.y()
         print("Scene", x, y)
-        cords = self.window.plot_window.pix_to_cords(x,y)
-        print("Cords", cords)
-        if self.window.julia_cords != cords:
-            self.window.julia_valid = False
-            self.window.julia_cords = cords
+        cords = (x,y)
+        self.window.julia_valid = False
+        self.window.plot_window = self.window.plot_window.set_julia(cords)
         self.window.change_mode()
         print("Mode", self.window.mode)
 

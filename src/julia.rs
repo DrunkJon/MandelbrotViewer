@@ -126,9 +126,8 @@ pub fn raw_single_julia(jx: f64, jy: f64, scale: u32, tries: u32) -> Vec<u8> {
     raw_julia(jul, -X_DIF, X_DIF, -Y_DIF, Y_DIF, 16 * scale , 9 * scale, tries)
 }
 
-
-const X_DIF: f64 = 2.1333;
-const Y_DIF: f64 = 1.2;
+pub const X_DIF: f64 = 2.1333;
+pub const Y_DIF: f64 = 1.2;
 
 fn standart_draw_julia_set_threaded(julia: Julia, out_file: &str, x_range: u32, y_range: u32, depth: u32) {
     main_julia(julia, -X_DIF, X_DIF, -Y_DIF, Y_DIF, x_range, y_range, out_file, depth);
