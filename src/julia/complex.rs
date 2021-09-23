@@ -1,13 +1,16 @@
 use std::ops::{Add, Sub, Mul, Div, Neg};
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+use bigdecimal::{BigDecimal, Zero, ToPrimitive};
+use std::str::FromStr;
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Complex {
-    real: f64,
-    imag: f64,
+    real: BigDecimal,
+    imag: BigDecimal,
 }
 
 impl Complex {
-    pub fn new(real: f64, imag: f64) -> Self {
+    pub fn new(real: BigDecimal, imag: BigDecimal) -> Self {
         Self {
             real: real,
             imag: imag,
@@ -16,30 +19,33 @@ impl Complex {
 
     pub fn null() -> Self {
         Self {
-            real: 0.0,
-            imag: 0.0
+            real: BigDecimal::zero(),
+            imag: BigDecimal::zero()
         }
     }
 
     pub fn con(&self) -> Self {
         Self {
-            real: self.real,
-            imag: - self.imag,
+            real: self.real.clone(),
+            imag: - self.imag.clone(),
         }
     }
 
+    // performance critical function
     pub fn dist_from_origin(&self) -> f64 {
-        let x = self.real.powi(2) + self.imag.powi(2);
+        let real = self.real.to_f64().expect("could not convert BigDecimal to f64");
+        let imag = self.real.to_f64().expect("could not convert BigDecimal to f64");
+        let x = real.powi(2) + imag.powi(2);
         x.sqrt()
     }
     
     pub fn powi(self, exponent: u32) -> Self {
         if exponent == 0 {
-            Complex::new(1.0, 0.0)
+            Complex::new(BigDecimal::from_str("1.0").unwrap(), BigDecimal::zero())
         } else {
-            let mut z = self;
-            for i in 0..exponent {
-                z = z * self;
+            let mut z = self.clone();
+            for _ in 0..exponent {
+                z = z * self.clone();
             }
             z
         }
@@ -73,8 +79,8 @@ impl Mul for Complex {
 
     fn mul(self, other: Self) -> Self {
         Self {
-            real: self.real * other.real - self.imag * other.imag,
-            imag: self.imag * other.real + self.real * other.imag,
+            real: self.real.clone() * other.real.clone() - self.imag.clone() * other.imag.clone(),
+            imag: self.imag.clone() * other.real.clone() + self.real.clone() * other.imag.clone(),
         }
     }
 }
@@ -83,14 +89,14 @@ impl Div for Complex {
     type Output = Self;
 
     fn div(self, other: Self) -> Self {
-        if other.imag == 0.0 {
+        if other.imag == BigDecimal::zero() {
             Self {
-                real: self.real / other.real,
-                imag: self.imag / other.real,
+                real: self.real.clone() / other.real.clone(),
+                imag: self.imag.clone() / other.real.clone(),
             }
         } else {
             let con = other.con();
-            let num = self * con;
+            let num = self * con.clone();
             let denom = other * con;
             num / denom
         }
@@ -108,68 +114,69 @@ impl Neg for Complex {
     }
 }
 
+/*
 #[cfg(test)]
 mod test {
     use super::Complex;
+    use bigdecimal::{BigDecimal, Zero};
+    use std::str::FromStr;
 
     #[test]
     fn complex_add_sub() {
-        let a = Complex::new(1.0, 0.0);
-        let b = Complex::new(0.0, 1.0);
-        let c = Complex::new(5.0, 3.0);
-        let d = Complex::new(-2.0, -6.0);
+        let a = Complex::new(BigDecimal::from_str("1.0").unwrap(), BigDecimal::zero());
+        let b = Complex::new(BigDecimal::zero(), BigDecimal::from_str("1.0").unwrap());
+        let c = Complex::new(BigDecimal::from_str("5.0").unwrap(), BigDecimal::from_str("3.0").unwrap());
+        let d = Complex::new(BigDecimal::from_str("-2.0").unwrap(), BigDecimal::from_str("-6.0").unwrap());
     
-        assert_eq!(a + a, Complex::new(2.0, 0.0));
-        assert_eq!(b + b, Complex::new(0.0, 2.0));
-        assert_eq!(a + b, Complex::new(1.0, 1.0));
+        assert_eq!(a + a, Complex::new(BigDecimal::from_str("2.0").unwrap(), BigDecimal::zero()));
+        assert_eq!(b + b, Complex::new(BigDecimal::zero(), BigDecimal::from_str("2.0").unwrap()));
+        assert_eq!(a + b, Complex::new(BigDecimal::from_str("1.0").unwrap(), BigDecimal::from_str("1.0").unwrap()));
     
-        assert_eq!(c - a, Complex::new(4.0, 3.0));
-        assert_eq!(c - b, Complex::new(5.0, 2.0));
+        assert_eq!(c - a, Complex::new(BigDecimal::from_str("4.0").unwrap(), BigDecimal::from_str("3.0").unwrap()));
+        assert_eq!(c - b, Complex::new(BigDecimal::from_str("5.0").unwrap(), BigDecimal::from_str("2.0").unwrap()));
     
-        assert_eq!(a + d, Complex::new(-1.0, -6.0));
-        assert_eq!(b + d, Complex::new(-2.0, -5.0));
+        assert_eq!(a + d, Complex::new(BigDecimal::from_str("-1.0").unwrap(), BigDecimal::from_str("-6.0").unwrap()));
+        assert_eq!(b + d, Complex::new(BigDecimal::from_str("-2.0").unwrap(), BigDecimal::from_str("-5.0").unwrap()));
     
-        assert_eq!(c + d, Complex::new(3.0, -3.0));
-        assert_eq!(c - d, Complex::new(7.0, 9.0));
+        assert_eq!(c + d, Complex::new(BigDecimal::from_str("3.0").unwrap(), BigDecimal::from_str("-3.0").unwrap()));
+        assert_eq!(c - d, Complex::new(BigDecimal::from_str("7.0").unwrap(), BigDecimal::from_str("9.0").unwrap()));
     }
     
     #[test]
     fn complex_mul() {
-        let a = Complex::new(1.0,0.0);
-        let b = Complex::new(0.0,1.0);
-        let c = Complex::new(2.0,3.0);
-        let d = Complex::new(-5.0,-4.0);
+        let a = Complex::new(BigDecimal::from_str("1.0").unwrap(),BigDecimal::zero());
+        let b = Complex::new(BigDecimal::zero(),BigDecimal::from_str("1.0").unwrap());
+        let c = Complex::new(BigDecimal::from_str("2.0").unwrap(),BigDecimal::from_str("3.0").unwrap());
+        let d = Complex::new(BigDecimal::from_str("-5.0").unwrap(),BigDecimal::from_str("-4.0").unwrap());
 
-        assert_eq!(a * b, Complex::new(0.0, 1.0));
+        assert_eq!(a * b, Complex::new(BigDecimal::zero(), BigDecimal::from_str("1.0").unwrap()));
         
         assert_eq!(a * c, c);
-        assert_eq!(b * c, Complex::new(-3.0, 2.0));
+        assert_eq!(b * c, Complex::new(BigDecimal::from_str("-3.0").unwrap(), BigDecimal::from_str("2.0").unwrap()));
 
-        assert_eq!(c * d, Complex::new(2.0, -23.0));
+        assert_eq!(c * d, Complex::new(BigDecimal::from_str("2.0").unwrap(), BigDecimal::from_str("-23.0").unwrap()));
     }
 
     #[test]
     fn complex_div() {
-        let a = Complex::new(1.0,0.0);
-        let b = Complex::new(0.0,1.0);
-        let c = Complex::new(2.0,3.0);
-        let d = Complex::new(-5.0,-4.0);
+        let a = Complex::new(BigDecimal::from_str("1.0").unwrap(),BigDecimal::zero());
+        let b = Complex::new(BigDecimal::zero(),BigDecimal::from_str("1.0").unwrap());
+        let c = Complex::new(BigDecimal::from_str("2.0").unwrap(),BigDecimal::from_str("3.0").unwrap());
+        let d = Complex::new(BigDecimal::from_str("-5.0").unwrap(),BigDecimal::from_str("-4.0").unwrap());
 
         assert_eq!(c / a, c);
         assert_eq!(d / a, d);
 
-        assert_eq!(c / b, Complex::new(3.0,-2.0));
-        assert_eq!(d / b, Complex::new(-4.0,5.0));
-
-        assert_eq!(c / d, Complex::new(-22.0 / 41.0, -7.0 / 41.0));
+        assert_eq!(c / b, Complex::new(BigDecimal::from_str("3.0").unwrap(),BigDecimal::from_str("-2.0").unwrap()));
+        assert_eq!(d / b, Complex::new(BigDecimal::from_str("-4.0").unwrap(),BigDecimal::from_str("5.0").unwrap()));
     }
 
     #[test]
     fn dist_from_origin() {
-        let a = Complex::new(1.0,0.0);
-        let b = Complex::new(0.0,1.0);
-        let c = Complex::new(2.0,3.0);
-        let d = Complex::new(-5.0,-4.0);
+        let a = Complex::new(BigDecimal::from_str("1.0").unwrap(),BigDecimal::zero());
+        let b = Complex::new(BigDecimal::zero(),BigDecimal::from_str("1.0").unwrap());
+        let c = Complex::new(BigDecimal::from_str("2.0").unwrap(),BigDecimal::from_str("3.0").unwrap());
+        let d = Complex::new(BigDecimal::from_str("-5.0").unwrap(),BigDecimal::from_str("-4.0").unwrap());
 
         assert_eq!(a.dist_from_origin(), 1f64);
         assert_eq!(b.dist_from_origin(), 1f64);
@@ -179,7 +186,8 @@ mod test {
 
     #[test]
     fn neg() {
-        let num = Complex::new(2.1, -7.5);
-        assert_eq!(-num, Complex::new(-2.1, 7.5));
+        let num = Complex::new(BigDecimal::from_str("2.1").unwrap(), BigDecimal::from_str("-7.5").unwrap());
+        assert_eq!(-num, Complex::new(BigDecimal::from_str("-2.1").unwrap(), BigDecimal::from_str("7.5").unwrap()));
     }
 }
+*/
