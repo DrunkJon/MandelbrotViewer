@@ -1,4 +1,4 @@
-import mandelbrot
+import mandelbrot_module as mandelbrot
 
 dims = (1920, 1080)
 

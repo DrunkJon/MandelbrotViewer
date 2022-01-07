@@ -1,4 +1,4 @@
-import mandelbrot
+import mandelbrot_module as mandelbrot
 
 
 MANDEL_FILE = "./renders/mandel.png"

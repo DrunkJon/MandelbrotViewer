@@ -7,7 +7,7 @@ from PyQt5.QtGui import QPixmap
 import sys
 from enum import Enum, auto
 
-from mandelbrot import PlotWindow
+from mandelbrot_module import PlotWindow
 
 
 class Modes(Enum):
@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
 
         # params
         self.scale = 120    # 120 = (1920, 1080), 80 = (1280, 720) ...
-        self.tries = 100
+        self.tries = 1000
 
         # render Items
         self.mandel_scene = None

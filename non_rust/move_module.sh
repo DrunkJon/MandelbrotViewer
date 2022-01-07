@@ -1,1 +1,1 @@
-cp ../target/release/mandelbrot.dll ./mandelbrot.pyd 
+cp ../target/release/mandelbrot_module.dll ./mandelbrot_module.pyd 

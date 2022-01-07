@@ -1,16 +1,16 @@
 [package]
-name = "mandelbrot"
+name = "mandelbrot_module"
 version = "0.1.0"
 edition = "2018"
 
 [lib]
-name = "mandelbrot"
+name = "mandelbrot_module"
 crate-type = ["cdylib"]
 
 [dependencies]
 image = "0.23.14"
 pbr = "1.0.4"
 
-[dependencies.cpython]
-version = "0.6"
+[dependencies.pyo3]
+version = "0.15.0"
 features = ["extension-module"]
