@@ -2,6 +2,7 @@ pub mod complex;
 use complex::Complex;
 
 pub mod polar;
+pub mod colors;
 
 use image::{RgbImage, Rgb, ImageBuffer};
 use pbr::ProgressBar;
@@ -176,7 +177,7 @@ fn render_julia(julia: Julia, x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_r
             for (pix_y, cord_y) in convert_range(y_min, y_max, y_range) {
                 let i = julia.stable_cords(cord_x, cord_y, tries);
                 if i != tries {
-                    line.push(ratio_to_hue(i as f64 / tries as f64));
+                    line.push(hue_builder(i, 250));
                 } else {
                     line.push(Rgb([0, 0, 0]));
                 }
@@ -218,7 +219,7 @@ fn render_mandelbrot(x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_range: u32
             for (pix_y, cord_y) in convert_range(y_min, y_max, y_range) {
                 let i = mandelbrot(cord_x, cord_y, tries);
                 if i != tries {
-                    line.push(ratio_to_hue(i as f64 / tries as f64));
+                    line.push(hue_builder(i, 250));
                 } else {
                     line.push(Rgb([0, 0, 0]));
                 }
@@ -237,6 +238,11 @@ fn render_mandelbrot(x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_range: u32
     }
     
     img
+}
+
+fn hue_builder(i: u32, depth: u32) -> Rgb<u8> {
+    let ratio = (i % depth) as f64 / depth as f64;
+    colors::ratio_to_color(ratio)
 }
 
 const C_LOW: u8 = 55;
@@ -258,6 +264,6 @@ fn ratio_to_hue(ratio: f64) -> Rgb<u8> {
         r += (C_HIGH as f64 * (1.0 - ratio) + 0.5) as u8;
         Rgb([r, g, b])
     } else {
-        panic!("tried to get hue for ratio > 1.0")
+        panic!("tried to get hue for ratio > 1.0: {}", ratio)
     }
 }

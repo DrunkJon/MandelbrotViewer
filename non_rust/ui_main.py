@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
 
         # params
         self.scale = 120    # 120 = (1920, 1080), 80 = (1280, 720) ...
-        self.tries = 1000
+        self.tries = 10000
 
         # render Items
         self.mandel_scene = None

@@ -1,4 +1,4 @@
 /target
 Cargo.lock
 non_rust/renders/
-non_rust/__pychache__/
+non_rust/__pycache__/
