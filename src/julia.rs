@@ -5,12 +5,9 @@ pub mod polar;
 pub mod colors;
 
 use image::{RgbImage, Rgb, ImageBuffer};
-use pbr::ProgressBar;
-use std::f64::consts::PI;
-use std::fs::create_dir;
-use std::path::Path;
 use std::thread;
 use std::sync::mpsc;
+use threadpool::ThreadPool;
 
 pub type Julia = Complex;   //represents starting point
 
@@ -65,9 +62,7 @@ pub fn mandelbrot(cx: f64, cy: f64, tries: u32) -> u32 {
         }
     }
     tries
-} 
-
-const RENDER_FOLDER: &str = "C:/Users/User/Desktop/plots";
+}
 
 fn convert_range(min: f64, max: f64, slices: u32) -> polar::Iter<(u32, f64)> {
     let dif = max - min;
@@ -76,45 +71,6 @@ fn convert_range(min: f64, max: f64, slices: u32) -> polar::Iter<(u32, f64)> {
             (i, min + (i as f64 / (slices -1) as f64) * dif)
         })
     )
-}
-
-pub fn main() {
-    let a = PI / 4.0;
-    let r_min = polar::cardioid(a, 0.5);
-    let length = 0.05;
-    let slices = 30;
-    let folder_name = "radial_julia3b";
-    create_dir(format!("{}/{}", RENDER_FOLDER, folder_name).as_str()).expect("folder already exists");
-    println!("{}", r_min);
-    for (i, (x, y)) in polar::rectangular_radial_path(a, r_min, r_min + length, slices).enumerate() {
-        let x = x + 0.25;
-        println!{"x:{} y:{}", x, y};
-        single_julia(x, y, 180, format!("{}/{}/{}.png", RENDER_FOLDER, folder_name, i).as_str(), 250);
-    }
-}
-
-fn configure_cardioid_pan_threaded() {
-    let out_folder: &str = "plots/sj-t2";
-    let p = Path::new(out_folder);
-    create_dir(p).expect("folder already exists");
-    let x_fac = 16;
-    let y_fac = 9;
-    let scale = 180;
-    let slices = 720;
-    let offset = 0.0;
-    let angle = 2.0 * PI;
-    let depth = 250;
-    let derailment = 0.002;
-    let prefix = "";
-    let mut pb = ProgressBar::new(slices as u64);
-    pb.format("|=+_|");
-    for (i, (x, y)) in polar::main_cardioid_path(slices, offset, angle, derailment).enumerate() {
-        let j = Julia::new(x, y);
-        let out_file = String::from(out_folder) + &format!("/{}{}({},{}).png", prefix, i, x, y).as_str();
-        standart_draw_julia_set_threaded(j, &out_file.as_str(), x_fac * scale, y_fac * scale, depth);
-        pb.inc();
-    }
-    pb.finish_println("done");
 }
 
 pub fn single_julia(jx: f64, jy: f64, scale: u32, out_file: &str, tries: u32) {
@@ -130,31 +86,6 @@ pub fn raw_single_julia(jx: f64, jy: f64, scale: u32, tries: u32) -> Vec<u8> {
 pub const X_DIF: f64 = 2.1333;
 pub const Y_DIF: f64 = 1.2;
 
-fn standart_draw_julia_set_threaded(julia: Julia, out_file: &str, x_range: u32, y_range: u32, depth: u32) {
-    main_julia(julia, -X_DIF, X_DIF, -Y_DIF, Y_DIF, x_range, y_range, out_file, depth);
-}
-
-fn draw_cardioid(c: f64, slices: u32) {
-    let xw = 1080;
-    let yw = 1080;
-    let mut img = RgbImage::new(xw, yw);
-    
-    for (i,(x, y)) in polar::rect_cardiod_range(c, 0.0, slices).enumerate() {
-        println!("{} | {}", x, y);
-        let rgb = {
-            if i == 0 {
-                Rgb([255,100,100])
-            } else {
-                Rgb([255,255,255])
-            }
-        };
-        img.put_pixel(((xw / 2) as i32 + (x * (xw / 2)as f64) as i32) as u32, ((yw / 2) as i32 + (y * (yw / 2)as f64) as i32) as u32, rgb)
-    }
-    
-    let out_file = "plots/cardiod.png";
-    img.save(out_file).expect("oops");
-}
-
 pub fn main_julia(julia: Julia, x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_range: u32, y_range: u32, out_file: &str, tries: u32) {
     let img = render_julia(julia, x_min, x_max, y_min, y_max, x_range, y_range, tries);
     img.save(out_file).expect("could not save image");
@@ -169,15 +100,15 @@ fn render_julia(julia: Julia, x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_r
     let mut img = RgbImage::new(x_range, y_range);
     let mut handles = Vec::new();
     
-    for (pix_x, cord_x) in convert_range(x_min, x_max, x_range) {
+    for (_, cord_x) in convert_range(x_min, x_max, x_range) {
         let (tx, rx) = mpsc::channel();
         handles.push((rx, thread::spawn(move || {
             let mut line = Vec::new();
             
-            for (pix_y, cord_y) in convert_range(y_min, y_max, y_range) {
+            for (_, cord_y) in convert_range(y_min, y_max, y_range) {
                 let i = julia.stable_cords(cord_x, cord_y, tries);
                 if i != tries {
-                    line.push(hue_builder(i, 250));
+                    line.push(colors::color_builder(i));
                 } else {
                     line.push(Rgb([0, 0, 0]));
                 }
@@ -209,61 +140,37 @@ pub fn fine_mandelbrot(x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_range: u
 
 fn render_mandelbrot(x_min: f64, x_max: f64, y_min:f64, y_max: f64, x_range: u32, y_range: u32, tries: u32) -> ImageBuffer<image::Rgb<u8>, std::vec::Vec<u8>> {
     let mut img = RgbImage::new(x_range, y_range);
-    let mut handles = Vec::new();
+    let mut recievers = Vec::new();
+
+    let workers = 32; // 2 x cores on my PC
+    let pool = ThreadPool::new(workers);
     
-    for (pix_x, cord_x) in convert_range(x_min, x_max, x_range) {
+    for (_, cord_x) in convert_range(x_min, x_max, x_range) {
         let (tx, rx) = mpsc::channel();
-        handles.push((rx, thread::spawn(move || {
+        recievers.push(rx);
+        pool.execute(move || {
             let mut line = Vec::new();
             
-            for (pix_y, cord_y) in convert_range(y_min, y_max, y_range) {
+            for (_, cord_y) in convert_range(y_min, y_max, y_range) {
                 let i = mandelbrot(cord_x, cord_y, tries);
                 if i != tries {
-                    line.push(hue_builder(i, 250));
+                    line.push(colors::color_builder(i));
                 } else {
                     line.push(Rgb([0, 0, 0]));
                 }
             }
             
             tx.send(line).unwrap();
-        })))
+        });
     }
     
-    for (x, (rx, handle)) in handles.into_iter().enumerate() {
+    for (x, rx) in recievers.into_iter().enumerate() {
         let colors = rx.recv().unwrap();
         for (y, c) in colors.into_iter().enumerate() {
             img.put_pixel(x as u32, y as u32, c);
         }
-        handle.join().unwrap();
     }
+    pool.join();
     
     img
-}
-
-fn hue_builder(i: u32, depth: u32) -> Rgb<u8> {
-    let ratio = (i % depth) as f64 / depth as f64;
-    colors::ratio_to_color(ratio)
-}
-
-const C_LOW: u8 = 55;
-const C_HIGH: u8 = 255 - C_LOW;
-
-fn ratio_to_hue(ratio: f64) -> Rgb<u8> {
-    let ratio = ratio.sqrt();
-    let mut r = C_LOW;
-    let mut g = C_LOW;
-    let mut b = C_LOW;
-    if ratio < 0.5 {
-        let ratio = ratio * 2.0;
-        g += (C_HIGH as f64 * ratio + 0.5) as u8;
-        b += (C_HIGH as f64 * (1.0 - ratio) + 0.5) as u8;
-        Rgb([r, g, b])
-    } else if ratio <= 1.0{
-        let ratio = (1.0 - ratio) * 2.0;
-        g += (C_HIGH as f64 * ratio + 0.5) as u8;
-        r += (C_HIGH as f64 * (1.0 - ratio) + 0.5) as u8;
-        Rgb([r, g, b])
-    } else {
-        panic!("tried to get hue for ratio > 1.0: {}", ratio)
-    }
 }

@@ -13,5 +13,4 @@ Simple GUI for viewing the Mandelbrot-Set and Julia-Sets.
 - the GUI is written in Python with PyQt5
 - check out `non_rust/ui_main.py` to see how it works
 ---
-- if you want to make changes to the Rust code, you'll first have to compile it with `cargo build --release`
-- Then run `./non_rust/move_module.sh` to make the compiled library visible to the Python code 
+- run.sh is a conviniece script, that compiles the rust code, moves the compiled module into /non_rust and runs ui_main.py

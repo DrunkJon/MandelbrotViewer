@@ -38,3 +38,10 @@ pub fn ratio_to_color(ratio: f64) -> Rgb<u8> {
     let (r,g,b) = hsv_to_rgb(h, 0.6, 1.0);
     Rgb([r, g, b])
 }
+
+const STD_DEPTH: u32 = 100;
+
+pub fn color_builder(i: u32) -> Rgb<u8> {
+    let ratio = (i % STD_DEPTH) as f64 / STD_DEPTH as f64;
+    ratio_to_color(ratio)
+}
