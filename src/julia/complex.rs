@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub, Mul, Div, Neg};
+use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div, Neg};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Complex {
@@ -57,6 +57,15 @@ impl Add for Complex {
     }
 }
 
+impl AddAssign for Complex {
+    fn add_assign(&mut self, other: Self) {
+        *self = Self {
+            real: self.real + other.real,
+            imag: self.imag + other.imag,
+        };
+    }
+}
+
 impl Sub for Complex {
     type Output = Self;
 
@@ -65,6 +74,15 @@ impl Sub for Complex {
             real: self.real - other.real,
             imag: self.imag - other.imag,
         }
+    }
+}
+
+impl SubAssign for Complex {
+    fn sub_assign(&mut self, other: Self) {
+        *self = Self {
+            real: self.real - other.real,
+            imag: self.imag - other.imag,
+        };
     }
 }
 
@@ -131,6 +149,20 @@ mod test {
     
         assert_eq!(c + d, Complex::new(3.0, -3.0));
         assert_eq!(c - d, Complex::new(7.0, 9.0));
+    }
+
+    #[test]
+    fn complex_add_sub_assign() {
+        let mut a = Complex::new(1.0, 0.0);
+        let b = Complex::new(0.0, 1.0);
+        let mut c = Complex::new(2.0, -3.0);
+        let d = Complex::new(-2.0, -6.0);
+
+        a += b;
+        assert_eq!(a, Complex::new(1.0, 1.0));
+
+        c -= d;
+        assert_eq!(c, Complex::new(4.0, 3.0));
     }
     
     #[test]

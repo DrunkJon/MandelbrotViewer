@@ -21,24 +21,34 @@ class MainWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
+        self.grabKeyboard()
+
         # params
         self.scale = 120    # 120 = (1920, 1080), 80 = (1280, 720) ...
-        self.tries = 10000
+        self.tries = 5000
+        self.power = 1
+        self.zoom_factor = 2
 
         # render Items
         self.mandel_scene = None
+        self.mandel_item = None
         self.mandel_valid = False
+
         self.julia_scene = None
+        self.julia_item = None
         self.julia_valid = False
 
         # maps pixels to 2D coordinates
-        self.plot_window = PlotWindow((16 * self.scale, 9 * self.scale))
+        self.plot_window = self.get_new_plot_window()
         
         # render first image
         self.mode = Modes.Mandelbrot
         self.mandel_path = None
         self.julia_path = None
         self.load_image()
+
+    def get_new_plot_window(self):
+        return PlotWindow((16 * self.scale, 9 * self.scale))
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
         self.resize_image()
@@ -53,7 +63,7 @@ class MainWindow(QMainWindow):
     def load_mandelbrot(self):
         if not self.mandel_valid:
             # generate mandel_scene
-            self.mandel_path = self.plot_window.load_mandelbrot(self.tries)
+            self.mandel_path = self.plot_window.load_mandelbrot(self.tries, self.power)
             pixmap = QPixmap(self.mandel_path)
 
             self.mandel_item = QtWidgets.QGraphicsPixmapItem(pixmap)
@@ -70,7 +80,7 @@ class MainWindow(QMainWindow):
     def load_julia(self):
         if not self.julia_valid:
             # generate julia_scene
-            self.julia_path = self.plot_window.load_julia(self.tries)
+            self.julia_path = self.plot_window.load_julia(self.tries, self.power)
             pixmap = QPixmap(self.julia_path)
 
             self.julia_item = QtWidgets.QGraphicsPixmapItem(pixmap)
@@ -94,14 +104,21 @@ class MainWindow(QMainWindow):
     def change_mode(self):
         if self.mode == Modes.Mandelbrot:
             self.mode = Modes.Julia
-            self.load_julia()
         elif self.mode == Modes.Julia:
             self.mode = Modes.Mandelbrot
-            self.load_mandelbrot()
+        self.load_image()
 
     def invalidate(self):
         self.mandel_valid = False
         self.julia_valid = False
+
+    def keyPressEvent(self, a0: QtGui.QKeyEvent) -> None:
+        super_result = super().keyPressEvent(a0)
+        # reset view
+        self.plot_window.reset_view()
+        self.invalidate()
+        self.load_image() 
+        return super_result
         
 
 class ResponsiveScene(QtWidgets.QGraphicsScene):
@@ -117,10 +134,10 @@ class ResponsiveScene(QtWidgets.QGraphicsScene):
         print("p", p)
         if rotation > 0:
             print("wheel forward")
-            self.window.plot_window = self.window.plot_window.zoom(p, 0.8)
+            self.window.plot_window = self.window.plot_window.zoom(p, 1 / self.window.zoom_factor)
         elif rotation < 0:
             print("wheel backward")
-            self.window.plot_window = self.window.plot_window.zoom(p, 1.25)
+            self.window.plot_window = self.window.plot_window.zoom(p, self.window.zoom_factor)
         print(self.window.plot_window)
         self.window.invalidate()
         self.window.load_image()
@@ -130,13 +147,14 @@ class ResponsiveScene(QtWidgets.QGraphicsScene):
         self.mousePressEvent(event)
 
     def mousePressEvent(self, event: 'QGraphicsSceneMouseEvent'): 
-        super().mousePressEvent(event)
+        super_result = super().mousePressEvent(event)
         button = event.button()
         if button == Qt.RightButton:
             point = event.buttonDownPos(button)
             self.right_click_event(point)
         elif button == Qt.LeftButton:
             self.left_click_event()
+        return super_result
 
     def right_click_event(self, point):
         x = point.x()
@@ -149,7 +167,6 @@ class ResponsiveScene(QtWidgets.QGraphicsScene):
         print("Mode", self.window.mode)
 
     def left_click_event(self):
-        # maybe implement a drag function
         pass
 
 

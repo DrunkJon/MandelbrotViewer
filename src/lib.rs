@@ -1,7 +1,6 @@
 mod julia;
 
 use pyo3::prelude::*;
-use pyo3::types::PyTuple;
 
 const MANDEL_FILE: &str = &"./renders/mandel.png";
 const JULIA_FILE: &str = &"./renders/julia.png";
@@ -29,7 +28,7 @@ impl PlotWindow {
         let y_max = julia::Y_DIF;
         let y_min = - julia::Y_DIF;
         let y_dif = y_max - y_min;
-        let julia = julia::Julia::new(0.25, 0.0);
+        let julia = julia::Julia::new(0.0, 0.0);
         PlotWindow {
             pixel_dim, x_min, x_max, x_dif, y_min, y_max, y_dif, julia
         }
@@ -40,11 +39,12 @@ impl PlotWindow {
         Ok(format!("({}, {}): x=({}, {}) y=({}, {})", dim.0, dim.1, self.x_min, self.x_max, self.y_min, self.y_max))
     }
 
-    // pix_to_cords is implemented through julia::convert_range
-
     fn zoom(&self, p: (f64, f64), factor: f64) -> PyResult<PlotWindow> {
         let p = pix_to_cords(p, self.pixel_dim.clone(), self.x_min.clone(), self.x_dif.clone(), self.y_min.clone(), self.y_dif.clone());
+        self.zoom_main(p, factor)
+    }
 
+    fn zoom_main(&self, p: (f64, f64), factor: f64) -> PyResult<PlotWindow> {
         let new_x_dif = self.x_dif * factor;
         let new_y_dif = self.y_dif * factor;
 
@@ -86,16 +86,33 @@ impl PlotWindow {
         })
     }
 
-    fn load_mandelbrot(&self, tries: u32) -> PyResult<String> {
+    fn load_mandelbrot(&self, tries: u32, power: u32) -> PyResult<String> {
         let dim = self.pixel_dim;
-        julia::fine_mandelbrot(self.x_min.clone(), self.x_max.clone(), self.y_min.clone(), self.y_max.clone(), dim.0 , dim.1, MANDEL_FILE, tries);
+        julia::fine_mandelbrot(
+            self.x_min.clone(), 
+            self.x_max.clone(), 
+            self.y_min.clone(), 
+            self.y_max.clone(), 
+            dim.0, dim.1, 
+            MANDEL_FILE, 
+            tries, power
+        );
         Ok(String::from(MANDEL_FILE))
     }
 
-    fn load_julia(&self, tries: u32) -> PyResult<String> {
+    fn load_julia(&self, tries: u32, power: u32) -> PyResult<String> {
         let dim = self.pixel_dim;
         let jul = self.julia.clone();
-        julia::main_julia(jul, self.x_min.clone(), self.x_max.clone(), self.y_min.clone(), self.y_max.clone(), dim.0 , dim.1, JULIA_FILE, tries);
+        julia::main_julia(
+            jul, 
+            self.x_min.clone(), 
+            self.x_max.clone(), 
+            self.y_min.clone(), 
+            self.y_max.clone(), 
+            dim.0 ,dim.1, 
+            JULIA_FILE, 
+            tries, power
+        );
         Ok(String::from(JULIA_FILE))
     }
 
@@ -113,11 +130,27 @@ impl PlotWindow {
             julia
         })
     }
+
+    fn reset_view(&mut self) -> PyResult<()> {
+        self.x_min = - julia::X_DIF;
+        self.x_max = julia::X_DIF;
+        self.x_dif = self.x_max - self.x_min;
+        self.y_min = - julia::Y_DIF;
+        self.y_max = julia::Y_DIF;
+        self.y_dif = self.y_max - self.y_min;
+        Ok(())
+    }
 }
 
 fn pix_to_cords(p: (f64, f64), pix_dim: (u32, u32), x_min: f64, x_dif: f64, y_min: f64, y_dif: f64) -> (f64, f64) {
     let x = x_min + (p.0 / pix_dim.0 as f64) * x_dif;
     let y = y_min + (p.1 / pix_dim.1 as f64) * y_dif;
+    (x, y)
+}
+
+fn pix_to_cords_from_reset(p: (f64, f64), pix_dim: (u32, u32)) -> (f64, f64) {
+    let x = -julia::X_DIF + (p.0 / pix_dim.0 as f64) * 2.0 * julia::X_DIF;
+    let y = -julia::Y_DIF + (p.1 / pix_dim.1 as f64) * 2.0 * julia::Y_DIF;
     (x, y)
 }
 
@@ -136,32 +169,32 @@ fn mandelbrot_module(_py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn julia(jx: f64, jy: f64, scale: u32, out_file: &str, tries: u32) -> PyResult<String> {
-    julia::single_julia(jx, jy, scale, out_file, tries);
+fn julia(jx: f64, jy: f64, scale: u32, out_file: &str, tries: u32, power: u32) -> PyResult<String> {
+    julia::single_julia(jx, jy, scale, out_file, tries, power);
     Ok(String::from(out_file))
 }
 
 #[pyfunction]
-fn raw_julia(jx: f64, jy: f64, scale: u32, tries: u32) -> PyResult<Vec<u8>> {
-    Ok(julia::raw_single_julia(jx, jy, scale, tries))
+fn raw_julia(jx: f64, jy: f64, scale: u32, tries: u32, power: u32) -> PyResult<Vec<u8>> {
+    Ok(julia::raw_single_julia(jx, jy, scale, tries, power))
 }
 
 #[pyfunction]
-fn mandelbrot(scale: u32, out_file: &str, tries: u32) -> PyResult<String> {
-    julia::main_mandelbrot(scale, out_file, tries);
+fn mandelbrot(scale: u32, out_file: &str, tries: u32, power: u32) -> PyResult<String> {
+    julia::main_mandelbrot(scale, out_file, tries, power);
     Ok(String::from(out_file))
 }
 
 #[pyfunction]
-fn fine_julia(jx: f64, jy: f64, x_min: f64, x_max: f64, y_min: f64, y_max: f64, scale: u32, out_file: &str, tries: u32) -> PyResult<String> {
+fn fine_julia(jx: f64, jy: f64, x_min: f64, x_max: f64, y_min: f64, y_max: f64, scale: u32, out_file: &str, tries: u32, power: u32) -> PyResult<String> {
     let jul = julia::Julia::new(jx, jy);
-    julia::main_julia(jul, x_min, x_max, y_min, y_max, 16 * scale , 9 * scale, out_file, tries);
+    julia::main_julia(jul, x_min, x_max, y_min, y_max, 16 * scale , 9 * scale, out_file, tries, power);
     Ok(String::from(out_file))
 }
 
 #[pyfunction]
-fn fine_mandelbrot(x_min: f64, x_max: f64, y_min: f64, y_max: f64, scale: u32, out_file: &str, tries: u32) -> PyResult<String> {
-    julia::fine_mandelbrot(x_min, x_max, y_min, y_max, 16 * scale , 9 * scale, out_file, tries);
+fn fine_mandelbrot(x_min: f64, x_max: f64, y_min: f64, y_max: f64, scale: u32, out_file: &str, tries: u32, power: u32) -> PyResult<String> {
+    julia::fine_mandelbrot(x_min, x_max, y_min, y_max, 16 * scale , 9 * scale, out_file, tries, power);
     Ok(String::from(out_file))
 }
 
@@ -173,14 +206,14 @@ mod test{
 
     #[test]
     fn single_julia_test() {
-        julia::single_julia(0.25, 0.0, 60, "./test.png", 50);
+        julia::single_julia(0.25, 0.0, 60, "./test.png", 50, 2);
         let path = Path::new("./test.png");
         remove_file(path).expect("could not delete test.png");
     }
 
     #[test]
     fn raw_julia_test() {
-        let raw = julia::raw_single_julia(0.25, 0.0, 60, 50);
+        let raw = julia::raw_single_julia(0.25, 0.0, 60, 50, 2);
         assert_eq!(raw.is_empty(), false);
     }
 }
