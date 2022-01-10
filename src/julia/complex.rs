@@ -38,7 +38,7 @@ impl Complex {
             Complex::new(1.0, 0.0)
         } else {
             let mut z = self;
-            for i in 0..exponent {
+            for _ in 0..exponent {
                 z = z * self;
             }
             z
@@ -91,8 +91,8 @@ impl Mul for Complex {
 
     fn mul(self, other: Self) -> Self {
         Self {
-            real: self.real * other.real - self.imag * other.imag,
-            imag: self.imag * other.real + self.real * other.imag,
+            real: self.real.mul_add(other.real, - self.imag * other.imag),
+            imag: self.imag.mul_add(other.real, self.real * other.imag),
         }
     }
 }

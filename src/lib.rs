@@ -39,12 +39,23 @@ impl PlotWindow {
         Ok(format!("({}, {}): x=({}, {}) y=({}, {})", dim.0, dim.1, self.x_min, self.x_max, self.y_min, self.y_max))
     }
 
-    fn zoom(&self, p: (f64, f64), factor: f64) -> PyResult<PlotWindow> {
+    fn move_view(&mut self, p: (f64, f64)) -> PyResult<()> {
+        let (new_x, new_y) = pix_to_cords(p, self.pixel_dim.clone(), self.x_min.clone(), self.x_dif.clone(), self.y_min.clone(), self.y_dif.clone());
+        let x_offset = self.x_dif / 2.0;
+        self.x_min = new_x - x_offset;
+        self.x_max = new_x + x_offset;
+        let y_offset = self.y_dif / 2.0;
+        self.y_min = new_y - y_offset;
+        self.y_max = new_y + y_offset;
+        Ok(())
+    }
+
+    fn zoom(&mut self, p: (f64, f64), factor: f64) -> PyResult<()> {
         let p = pix_to_cords(p, self.pixel_dim.clone(), self.x_min.clone(), self.x_dif.clone(), self.y_min.clone(), self.y_dif.clone());
         self.zoom_main(p, factor)
     }
 
-    fn zoom_main(&self, p: (f64, f64), factor: f64) -> PyResult<PlotWindow> {
+    fn zoom_main(&mut self, p: (f64, f64), factor: f64) -> PyResult<()> {
         let new_x_dif = self.x_dif * factor;
         let new_y_dif = self.y_dif * factor;
 
@@ -73,17 +84,15 @@ impl PlotWindow {
                 new_y_min = new_y_max - new_y_dif;
             }
         }
+        
+        self.x_min = new_x_min; 
+        self.x_max = new_x_max; 
+        self.x_dif = new_x_dif; 
+        self.y_min = new_y_min; 
+        self.y_max = new_y_max;
+        self.y_dif = new_y_dif;
 
-        Ok(PlotWindow {
-            pixel_dim: self.pixel_dim.clone(), 
-            x_min: new_x_min, 
-            x_max: new_x_max, 
-            x_dif: new_x_dif, 
-            y_min: new_y_min, 
-            y_max: new_y_max, 
-            y_dif: new_y_dif, 
-            julia: self.julia.clone()
-        })
+        Ok(())
     }
 
     fn load_mandelbrot(&self, tries: u32, power: u32) -> PyResult<String> {
@@ -116,19 +125,11 @@ impl PlotWindow {
         Ok(String::from(JULIA_FILE))
     }
 
-    fn set_julia(&self, j_pix_cords: (f64, f64)) -> PyResult<PlotWindow> {
+    fn set_julia(&mut self, j_pix_cords: (f64, f64)) -> PyResult<()> {
         let j_cords = pix_to_cords(j_pix_cords, self.pixel_dim.clone(), self.x_min.clone(), self.x_dif.clone(), self.y_min.clone(), self.y_dif.clone()); 
         let julia = julia::Julia::new(j_cords.0, j_cords.1);
-        Ok(PlotWindow {
-            pixel_dim: self.pixel_dim.clone(), 
-            x_min: self.x_min.clone(), 
-            x_max: self.x_max.clone(), 
-            x_dif: self.x_dif.clone(), 
-            y_min: self.y_min.clone(), 
-            y_max: self.y_max.clone(), 
-            y_dif: self.y_dif.clone(), 
-            julia
-        })
+        self.julia = julia;
+        Ok(())
     }
 
     fn reset_view(&mut self) -> PyResult<()> {
@@ -145,12 +146,6 @@ impl PlotWindow {
 fn pix_to_cords(p: (f64, f64), pix_dim: (u32, u32), x_min: f64, x_dif: f64, y_min: f64, y_dif: f64) -> (f64, f64) {
     let x = x_min + (p.0 / pix_dim.0 as f64) * x_dif;
     let y = y_min + (p.1 / pix_dim.1 as f64) * y_dif;
-    (x, y)
-}
-
-fn pix_to_cords_from_reset(p: (f64, f64), pix_dim: (u32, u32)) -> (f64, f64) {
-    let x = -julia::X_DIF + (p.0 / pix_dim.0 as f64) * 2.0 * julia::X_DIF;
-    let y = -julia::Y_DIF + (p.1 / pix_dim.1 as f64) * 2.0 * julia::Y_DIF;
     (x, y)
 }
 

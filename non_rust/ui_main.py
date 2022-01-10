@@ -25,7 +25,7 @@ class MainWindow(QMainWindow):
 
         # params
         self.scale = 120    # 120 = (1920, 1080), 80 = (1280, 720) ...
-        self.tries = 5000
+        self.tries = 10000
         self.power = 1
         self.zoom_factor = 2
 
@@ -108,15 +108,22 @@ class MainWindow(QMainWindow):
             self.mode = Modes.Mandelbrot
         self.load_image()
 
-    def invalidate(self):
+    def invalidate_all(self):
         self.mandel_valid = False
         self.julia_valid = False
+
+    def invalidate(self):
+        if self.mode == Modes.Mandelbrot:
+            self.mandel_valid = False
+        elif self.mode == Modes.Julia:
+            self.julia_valid = False
+
 
     def keyPressEvent(self, a0: QtGui.QKeyEvent) -> None:
         super_result = super().keyPressEvent(a0)
         # reset view
         self.plot_window.reset_view()
-        self.invalidate()
+        self.invalidate_all()
         self.load_image() 
         return super_result
         
@@ -134,12 +141,12 @@ class ResponsiveScene(QtWidgets.QGraphicsScene):
         print("p", p)
         if rotation > 0:
             print("wheel forward")
-            self.window.plot_window = self.window.plot_window.zoom(p, 1 / self.window.zoom_factor)
+            self.window.plot_window.zoom(p, 1 / self.window.zoom_factor)
         elif rotation < 0:
             print("wheel backward")
-            self.window.plot_window = self.window.plot_window.zoom(p, self.window.zoom_factor)
+            self.window.plot_window.zoom(p, self.window.zoom_factor)
         print(self.window.plot_window)
-        self.window.invalidate()
+        self.window.invalidate_all()
         self.window.load_image()
 
     def mouseDoubleClickEvent(self, event: 'QGraphicsSceneMouseEvent') -> None:
@@ -149,11 +156,11 @@ class ResponsiveScene(QtWidgets.QGraphicsScene):
     def mousePressEvent(self, event: 'QGraphicsSceneMouseEvent'): 
         super_result = super().mousePressEvent(event)
         button = event.button()
+        point = event.buttonDownPos(button)
         if button == Qt.RightButton:
-            point = event.buttonDownPos(button)
             self.right_click_event(point)
         elif button == Qt.LeftButton:
-            self.left_click_event()
+            self.left_click_event(point)
         return super_result
 
     def right_click_event(self, point):
@@ -162,12 +169,18 @@ class ResponsiveScene(QtWidgets.QGraphicsScene):
         print("Scene", x, y)
         cords = (x,y)
         self.window.julia_valid = False
-        self.window.plot_window = self.window.plot_window.set_julia(cords)
+        self.window.plot_window.set_julia(cords)
         self.window.change_mode()
         print("Mode", self.window.mode)
 
-    def left_click_event(self):
-        pass
+    def left_click_event(self, point):
+        x = point.x()
+        y = point.y()
+        print("Scene", x, y)
+        cords = (x,y)
+        self.window.plot_window.move_view(cords)
+        self.window.invalidate()
+        self.window.load_image()
 
 
 def main():
